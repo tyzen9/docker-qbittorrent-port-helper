@@ -1,0 +1,53 @@
+# Comments are provided throughout this file to help you get started.
+# If you need more help, visit the Docker Compose reference guide at
+# https://docs.docker.com/go/compose-spec-reference/
+
+# Here the instructions define your application as a service called "app".
+# This service is built from the Dockerfile in the current directory.
+# You can add other services your application may depend on here, such as a
+# database or a cache. For examples, see the Awesome Compose repository:
+# https://github.com/docker/awesome-compose
+services:
+  helper:
+    build:
+      context: .
+    container_name: helper
+    # In development, we need these volumes to make changes live to the script
+    volumes:
+      - ./app:/usr/src/app/qph
+      - ./pia-shared:/pia-shared
+    environment:
+      - QBITTORRENT_USERNAME=admin
+      - QBITTORRENT_PASSWORD=abcd1234
+      - QBITTORRENT_PORT_NUMBER=8080
+      - QBITTORRENT_URL=http://qbittorrent
+      # Optional settings, these are the defaults
+      - FILE=/pia-shared/port.dat
+      - WATCH_INTERVAL=30
+    networks:
+      - test-net
+
+  # We light up an instance of qBittorrent just for development purposes
+  # This will allow us to test connectivity to the qBittorrent API to make changes
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    container_name: qbittorrent
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=Etc/UTC
+      - WEBUI_PORT=8080
+    ports:
+      - 8080:8080
+    volumes:
+      - config:/config
+    restart: unless-stopped
+    networks:
+      - test-net      
+
+networks:
+  test-net:
+    driver: bridge
+
+volumes:
+  config:
