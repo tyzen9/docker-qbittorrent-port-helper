@@ -1,7 +1,7 @@
 # <img src="https://github.com/tyzen9/tyzen9/blob/main/images/logos/t9_logo.png" height="25"> Tyzen9 - docker-qbittorrent-port-helper
 In order to meet seeding requirements, other peers need to connect to your qBittorrent client. They use the port number specified in qBittorrent to attempt to establish this connection.  This container monitors the dynamically assigned PIA port number, and using the qBittorrent API, adds that number to the qBittorrent client automatically as it changes.
 
-> [!INFO]
+> [!NOTE]
 > This [docker image](https://hub.docker.com/repository/docker/tyzen9/qbittorrent-port-helper/general) is used in my in my experimental Docker stack [docker-pia-servarr](https://github.com/tyzen9/docker-pia-servarr), and keeps the qBittorrent instance available even as the PIA exposed port number changes.
 
 ## Requirements
