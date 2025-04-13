@@ -1,0 +1,24 @@
+{
+    // Name of the development container
+    "name": "Python qBittorrent Dev Container",
+    // The compose file to use when developing in the container
+    "dockerComposeFile": "dev-compose.yml",
+    // The service name of the primary development container
+    "service": "app",
+    // The root folder in the development container where the 
+    // project files are mounted. 
+    "workspaceFolder": "/workspace",
+    // Command to run when the dev container is stopped
+    "shutdownAction": "stopCompose",
+    // Make sure these VS CODE extensions exist in the dev container
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                // Python language support
+                "ms-python.python",
+                // Docker container management/debugging
+                "ms-azuretools.vscode-docker"
+            ]
+        }
+    }
+}

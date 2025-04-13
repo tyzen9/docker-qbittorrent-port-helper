@@ -1,0 +1,41 @@
+services:
+  app:
+    build:
+      context: ..  # The project root is one directory above .devcontainer
+      dockerfile: .devcontainer/Dockerfile
+    volumes:
+      - ..:/workspace:cached
+    command: sleep infinity
+    environment:
+      - QBITTORRENT_USERNAME=${QBITTORRENT_USERNAME}
+      - QBITTORRENT_PASSWORD=${QBITTORRENT_PASSWORD}
+      - QBITTORRENT_PORT_NUMBER=${QBITTORRENT_PORT_NUMBER}
+      - QBITTORRENT_URL=${QBITTORRENT_URL}
+    networks:
+      - dev-network
+
+  qbittorrent:
+    image: lscr.io/linuxserver/qbittorrent:latest
+    environment:
+      - PUID=${PUID}
+      - PGID=${PGID}
+      - TZ=${TZ}
+      - WEBUI_PORT=${QBITTORRENT_PORT_NUMBER}
+    ports:
+      - "${QBITTORRENT_PORT_NUMBER}:8080" # Map host port to container's WEBUI_PORT
+      - "6881:6881" # Torrent traffic (TCP)
+      - "6881:6881/udp" # Torrent traffic (UDP)
+    volumes:
+      - qbittorrent-config:/config
+      - downloads:/downloads
+    restart: unless-stopped
+    networks:
+      - dev-network
+
+volumes:
+  qbittorrent-config:
+  downloads:
+
+networks:
+  dev-network:
+    driver: bridge
