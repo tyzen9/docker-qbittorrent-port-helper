@@ -6,24 +6,77 @@ import time
 import datetime
 import qbittorrentapi
 
-from colorama import init as colorama_init
-from colorama import Fore, Style
-colorama_init()
+import logging
+from colorlog import ColoredFormatter
 
+
+###########################################
+# Process environment variables
+###########################################
 # Set all values that are set via the environment
-qbt_url = os.environ['QBITTORRENT_URL']
-qbt_port = os.environ['QBITTORRENT_PORT_NUMBER']
-qbt_username = os.environ['QBITTORRENT_USERNAME']
-qbt_password = os.environ['QBITTORRENT_PASSWORD']
-vpn_portFile = os.environ['FILE']
-watch_interval =  int(os.environ['WATCH_INTERVAL'])
+QBITTORRENT_URL = os.environ['QBITTORRENT_URL']
+QBITTORRENT_PORT_NUMBER = os.environ['QBITTORRENT_PORT_NUMBER']
+QBITTORRENT_USERNAME = os.environ['QBITTORRENT_USERNAME']
+QBITTORRENT_PASSWORD = os.environ['QBITTORRENT_PASSWORD']
+WATCH_INTERVAL =  int(os.environ.get('UPDATE_INTERVAL', '300')) # Default 5 mins
+VPN_PORT_FILEPATH = os.environ.get('VPN_PORT_FILEPATH', '/pia-shared/port.dat')
+
+# Validate that all required environment variables are set
+required_vars = {
+    "QBITTORRENT_URL": QBITTORRENT_URL,
+    "QBITTORRENT_PORT_NUMBER": QBITTORRENT_PORT_NUMBER,
+    "QBITTORRENT_USERNAME": QBITTORRENT_USERNAME,
+    "QBITTORRENT_PASSWORD": QBITTORRENT_PASSWORD
+}
+missing_vars = [key for key, value in required_vars.items() if not value]
+if missing_vars:
+    print(f"Error: Missing required environment variables: {missing_vars}")
+    sys.exit(1)
+
+# Determine the log level to be used, the default will be INFO
+LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
+if LOG_LEVEL not in ['DEBUG','INFO','WARNING','ERROR','CRITICAL']:
+    LOG_LEVEL = 'INFO'
+
+###########################################
+# Setup Logging
+###########################################
+# Create a logger
+#logging.basicConfig(level=LOG_LEVEL)
+logger = logging.getLogger()
+loglevel = logging.getLevelName(LOG_LEVEL)
+logger.setLevel(loglevel)
+
+# Create formatter and add it to the handler
+formatter = ColoredFormatter(
+    "%(log_color)s%(asctime)s [%(levelname)s] %(message)s",
+    datefmt='%Y-%m-%d %H:%M:%S',
+    reset=True,
+    log_colors={
+        'DEBUG':    'light_black',
+        'INFO':     'white',
+        'WARNING':  'yellow',
+        'ERROR':    'red',
+        'CRITICAL': 'red,bg_white',
+    },
+    secondary_log_colors={},
+    style='%'
+)
+
+# Create a stream handler for formatting, and initiate the format
+handler = logging.StreamHandler()
+handler.setFormatter(formatter)
+# Add the handler to the logger
+logger.addHandler(handler)
+
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-def printSplash():
+def splashLogo():
     """
-    Print the splash screen
+    Print the splash screen to the logs
     """
-    print(f''' _____                                                          _____ 
+    logging.info(f'''
+ _____                                                          _____ 
 ( ___ )                                                        ( ___ )
  |   |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|   | 
  |   |                                                          |   | 
@@ -33,10 +86,11 @@ def printSplash():
  |   |      ██║     ╚██╔╝   ███╔╝  ██╔══╝  ██║╚██╗██║ ╚═══██║   |   | 
  |   |      ██║      ██║   ███████╗███████╗██║ ╚████║ █████╔╝   |   | 
  |   |      ╚═╝      ╚═╝   ╚══════╝╚══════╝╚═╝  ╚═══╝ ╚════╝    |   | 
- |   |                {Fore.CYAN}https://github.com/tyzen9{Fore.RESET}                 |   | 
- |   |                    Made in the {Fore.RED}U{Fore.RESET}.{Fore.WHITE}S{Fore.RESET}.{Fore.BLUE}A{Fore.RESET}.                    |   | 
+ |   |                https://github.com/tyzen9                 |   | 
+ |   |                    Made in the U.S.A.                    |   | 
  |___|~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|___| 
 (_____)                                                        (_____)
+
 ''')
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -54,13 +108,13 @@ def getPortNumber():
     # On any exception, zero will be returned
     try:
         # Open the file, read the first line, and close the file
-        file = open(vpn_portFile, 'r')
+        file = open(VPN_PORT_FILEPATH, 'r')
         first_line = file.readline()
         file.close()
         # Convert the port number into an integer
         __returnValue = int(first_line.strip())
     except Exception as e:
-        print (f'{Fore.RED}Error:  Unable to read port number from {vpn_portFile}{Fore.RESET}')
+        print (f'{Fore.RED}Error:  Unable to read port number from {VPN_PORT_FILEPATH}{Fore.RESET}')
         print (f'\t{e}')
     return(__returnValue)
 
@@ -71,13 +125,13 @@ def main():
 
     # Set the qBittorrent WEB API connection values
     conn_info = dict(
-        host=qbt_url,
-        port=qbt_port,
-        username=qbt_username,
-        password=qbt_password,
+        host=QBITTORRENT_URL,
+        port=QBITTORRENT_PORT_NUMBER,
+        username=QBITTORRENT_USERNAME,
+        password=QBITTORRENT_PASSWORD,
     )
 
-    print(f'{Fore.LIGHTBLACK_EX}please wait 5 seconds...{Fore.RESET}')
+    logging.info(f'please wait 5 seconds...')
     time.sleep(5)
 
     # Instantiate a qBittorrent WEB API Client using the appropriate WebUI configuration
@@ -87,23 +141,23 @@ def main():
     while __qbtConnectionValidated == False:
         # First lets make sure we can connect to the qBittorrent API by just logging in/out
         try:
-            print(f'Validate qBittorrent WEB API connection at {qbt_url}:{qbt_port}')
+            logging.info(f'Validate qBittorrent WEB API connection at {QBITTORRENT_URL}:{QBITTORRENT_PORT_NUMBER}')
             qbt_client.auth_log_in()
             qbt_client.auth_log_out()
-            print(f'\t✅  Validated')
+            logging.info(f'\t✅  Validated')
             __qbtConnectionValidated = True
         except Exception as e:
-            print (f'{Fore.RED}Error:  qBittorrent Web API Login Failure{Fore.RESET}')
-            print ('**********************************************************************')
-            print (f'Please make sure qBittorrent is running at {qbt_url}:{qbt_port}\n')
-            print ('If this is the first time the qBittorrent container is being run, then')
-            print ('check its output log for the admin users\'s temporary password.  Update')
-            print ('the qBittorrent admin password  using the qBittorrent web interface to')
-            print ('match the password specified in this application, and restart.')
-            print ('**********************************************************************')
-            print ('Exception Details:')
-            print (f'{e}\n')
-            print ('Retrying in 10 seconds...')
+            logging.error (f'Error:  qBittorrent Web API Login Failure')
+            logging.error ('**********************************************************************')
+            logging.error (f'Please make sure qBittorrent is running at {QBITTORRENT_URL}:{QBITTORRENT_PORT_NUMBER}\n')
+            logging.error ('If this is the first time the qBittorrent container is being run, then')
+            logging.error ('check its output log for the admin users\'s temporary password.  Update')
+            logging.error ('the qBittorrent admin password  using the qBittorrent web interface to')
+            logging.error ('match the password specified in this application, and restart.')
+            logging.error ('**********************************************************************')
+            logging.error ('Exception Details:')
+            logging.error (f'{e}\n')
+            logging.error ('Retrying in 10 seconds...')
             time.sleep(10)
 
     # Now, forever check for a change in the VPN Port number by reading the specified file
@@ -113,36 +167,36 @@ def main():
         __piaPortNumber = getPortNumber()
         # If this is a new port number, and the port number returned is NOT zero (0)
         if (__qbtPortNumber != __piaPortNumber) and (__piaPortNumber != 0):
-            print (f'---------------------')
-            print (f'{Fore.BLUE}Assigned VPN forwarding port number is now: {__piaPortNumber}{Fore.RESET}')
+            logging.debug (f'---------------------')
+            logging.info (f'{Fore.BLUE}Assigned VPN forwarding port number is now: {__piaPortNumber}{Fore.RESET}')
             # Let's update qBittorrent
             try:
-                print(f'The UTC time is: {datetime.datetime.now()}')
-                print(f'Connecting to qBittorrent WEB API at {qbt_url}:{qbt_port}')
+                logging.info(f'The time is: {datetime.datetime.now()}')
+                logging.info(f'Connecting to qBittorrent WEB API at {QBITTORRENT_URL}:{QBITTORRENT_PORT_NUMBER}')
                 qbt_client.auth_log_in()
-                print(f'\tSuccessful connection')
-                print(f"\tqBittorrent: {qbt_client.app.version}")
-                print(f"\tqBittorrent Web API: v{qbt_client.app.web_api_version}")
+                logging.info(f'\tSuccessful connection')
+                logging.info(f"\tqBittorrent: {qbt_client.app.version}")
+                logging.info(f"\tqBittorrent Web API: v{qbt_client.app.web_api_version}")
                 qbt_client.app.preferences = dict(listen_port=__piaPortNumber)
                 # Validate with a call back to qBittorrent that the update to the listening port was successful
                 if (qbt_client.app.preferences.listen_port == __piaPortNumber):
-                    print (f'\t🎉  {Fore.GREEN}Listening port updated successfully to {__piaPortNumber}{Fore.RESET}')
+                    logging.info (f'\t🎉 Listening port updated successfully to {__piaPortNumber}')
                     __qbtPortNumber = __piaPortNumber
                 else:
-                    print (f'\t{Fore.RED}Something failed updating the port, will try again in {watch_interval} seconds{Fore.RESET}')
+                    logging.error (f'\tSomething failed updating the port, will try again in {WATCH_INTERVAL} seconds')
                 qbt_client.auth_log_out()
-                print('WEB API connection closed')
-                print (f'---------------------')
+                logging.info('WEB API connection closed')
+                logging.debug (f'---------------------')
             # If an error was encountered, then dump the details to the screen and try again
             except Exception as e:
-                print (f'{Fore.RED}Error: qBittorrent Web API Connection Failure{Fore.RESET}')
+                logging.error (f'Error: qBittorrent Web API Connection Failure')
                 print (f'\t{e}')
 
-        print (f'{Fore.LIGHTBLACK_EX}Watching {vpn_portFile} for an updated port number, checking again in {watch_interval} seconds {Fore.RESET}')
-        time.sleep(watch_interval)
+        logging.debug (f'Watching {VPN_PORT_FILEPATH} for an updated port number, checking again in {WATCH_INTERVAL} seconds')
+        time.sleep(WATCH_INTERVAL)
 
 
 # Was this script called directly?  Then lets go....
 if __name__=="__main__": 
-    printSplash()
+    splashLogo()
     main() 

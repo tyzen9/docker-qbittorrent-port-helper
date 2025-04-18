@@ -5,6 +5,7 @@ services:
       dockerfile: .devcontainer/Dockerfile
     volumes:
       - ..:/workspace:cached
+      - ../pia-shared:/pia-shared
     command: sleep infinity
     environment:
       - QBITTORRENT_USERNAME=${QBITTORRENT_USERNAME}
