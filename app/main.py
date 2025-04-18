@@ -1,14 +1,11 @@
 import os
-import requests
 import sys
-import json
 import time
 import datetime
 import qbittorrentapi
 
 import logging
 from colorlog import ColoredFormatter
-
 
 ###########################################
 # Process environment variables
@@ -19,7 +16,8 @@ QBITTORRENT_PORT_NUMBER = os.environ['QBITTORRENT_PORT_NUMBER']
 QBITTORRENT_USERNAME = os.environ['QBITTORRENT_USERNAME']
 QBITTORRENT_PASSWORD = os.environ['QBITTORRENT_PASSWORD']
 WATCH_INTERVAL =  int(os.environ.get('UPDATE_INTERVAL', '300')) # Default 5 mins
-VPN_PORT_FILEPATH = os.environ.get('VPN_PORT_FILEPATH', '/pia-shared/port.dat')
+VPN_DATA_FILEPATH = os.environ.get('VPN_DATA_FILEPATH', '/vpn-data/port.dat')
+STARTUP_DELAY =  int(os.environ.get('STARTUP_DELAY', '0')) # Default 0 secs
 
 # Validate that all required environment variables are set
 required_vars = {
@@ -69,6 +67,8 @@ handler.setFormatter(formatter)
 # Add the handler to the logger
 logger.addHandler(handler)
 
+# Configure the logging level for qbittorrent-api
+logging.getLogger('qbittorrentapi').setLevel(logging.ERROR)
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 def splashLogo():
@@ -108,13 +108,13 @@ def getPortNumber():
     # On any exception, zero will be returned
     try:
         # Open the file, read the first line, and close the file
-        file = open(VPN_PORT_FILEPATH, 'r')
+        file = open(VPN_DATA_FILEPATH, 'r')
         first_line = file.readline()
         file.close()
         # Convert the port number into an integer
         __returnValue = int(first_line.strip())
     except Exception as e:
-        print (f'{Fore.RED}Error:  Unable to read port number from {VPN_PORT_FILEPATH}{Fore.RESET}')
+        print (f'{Fore.RED}Error:  Unable to read port number from {VPN_DATA_FILEPATH}{Fore.RESET}')
         print (f'\t{e}')
     return(__returnValue)
 
@@ -131,8 +131,9 @@ def main():
         password=QBITTORRENT_PASSWORD,
     )
 
-    logging.info(f'please wait 5 seconds...')
-    time.sleep(5)
+    if (STARTUP_DELAY > 0):
+        logging.info(f'please wait {STARTUP_DELAY} seconds...')
+        time.sleep(STARTUP_DELAY)
 
     # Instantiate a qBittorrent WEB API Client using the appropriate WebUI configuration
     qbt_client = qbittorrentapi.Client(**conn_info)
@@ -152,7 +153,7 @@ def main():
             logging.error (f'Please make sure qBittorrent is running at {QBITTORRENT_URL}:{QBITTORRENT_PORT_NUMBER}\n')
             logging.error ('If this is the first time the qBittorrent container is being run, then')
             logging.error ('check its output log for the admin users\'s temporary password.  Update')
-            logging.error ('the qBittorrent admin password  using the qBittorrent web interface to')
+            logging.error ('the qBittorrent admin password using the qBittorrent web interface to')
             logging.error ('match the password specified in this application, and restart.')
             logging.error ('**********************************************************************')
             logging.error ('Exception Details:')
@@ -168,7 +169,7 @@ def main():
         # If this is a new port number, and the port number returned is NOT zero (0)
         if (__qbtPortNumber != __piaPortNumber) and (__piaPortNumber != 0):
             logging.debug (f'---------------------')
-            logging.info (f'{Fore.BLUE}Assigned VPN forwarding port number is now: {__piaPortNumber}{Fore.RESET}')
+            logging.info (f'Assigned VPN forwarding port number is now: {__piaPortNumber}')
             # Let's update qBittorrent
             try:
                 logging.info(f'The time is: {datetime.datetime.now()}')
@@ -192,7 +193,7 @@ def main():
                 logging.error (f'Error: qBittorrent Web API Connection Failure')
                 print (f'\t{e}')
 
-        logging.debug (f'Watching {VPN_PORT_FILEPATH} for an updated port number, checking again in {WATCH_INTERVAL} seconds')
+        logging.debug (f'Watching {VPN_DATA_FILEPATH} for an updated port number, checking again in {WATCH_INTERVAL} seconds')
         time.sleep(WATCH_INTERVAL)
 
 
