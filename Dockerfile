@@ -1,34 +1,27 @@
-FROM python:3-alpine
+FROM python:3.11-slim
 LABEL maintainer="steve@tyzen9.com"
 
-ARG url=http://localhost
-ARG port=8080
-ARG username
-ARG password
-ARG portFilePath=/pia-shared/port.dat
-ARG watchIntervalSecs=30
+# Install Debian prerequisites
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    apt \
+    dpkg \
+    ca-certificates \
+    curl \
+    libc-bin \
+    passwd \
+&& rm -rf /var/lib/apt/lists/*
 
-ENV QBITTORRENT_URL=$url
-ENV QBITTORRENT_PORT_NUMBER=$port
-ENV QBITTORRENT_USERNAME=$username
-ENV QBITTORRENT_PASSWORD=$password
-ENV FILE=$portFilePath
-ENV WATCH_INTERVAL=$watchIntervalSecs
+# Set the working directory inside of the image's filesystem
+WORKDIR /usr/src
 
-# Install the Alpine libraries that we need using APK
-RUN apk add --no-cache \
-        bash \
-        curl \
-        nmap-ncat
-
-WORKDIR /usr/src/app
-
+# Installed the required Python libraries
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-RUN mkdir -p qph
-COPY app/. ./qph/.
+# Make a directory on the image's filesystem
+# and copy the application into that directory
+RUN mkdir -p tyzen9
+COPY app/. tyzen9/.
 
-#ENTRYPOINT ["tail", "-f", "/dev/null"]
-ENTRYPOINT ["python3", "qph/main.py"]
-
+# Production entry point
+ENTRYPOINT ["python3", "tyzen9/main.py"]
