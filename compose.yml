@@ -1,44 +1,23 @@
 services:
-  helper:
-    build:
-      context: .
-    container_name: qbittorrent_port_helper
-    # In development, we need these volumes to make changes live to the script
-    volumes:
-      - ./app:/usr/src/app/qph
-      - ./pia-shared:/pia-shared
-    environment:
-      - QBITTORRENT_USERNAME=admin
-      - QBITTORRENT_PASSWORD=abcd1234
-      - QBITTORRENT_PORT_NUMBER=8080
-      - QBITTORRENT_URL=http://qbittorrent
-      # Optional settings, these are the defaults
-      - FILE=/pia-shared/port.dat
-      - WATCH_INTERVAL=30
-    networks:
-      - test-net
-
-  # We light up an instance of qBittorrent just for development purposes
-  # This will allow us to test connectivity to the qBittorrent API to make changes
-  qbittorrent:
-    image: lscr.io/linuxserver/qbittorrent:latest
-    container_name: qbittorrent
-    environment:
-      - PUID=1000
-      - PGID=1000
-      - TZ=Etc/UTC
-      - WEBUI_PORT=8080
-    ports:
-      - 8080:8080
-    volumes:
-      - qbt-config:/config
-    restart: unless-stopped
-    networks:
-      - test-net      
-
-networks:
-  test-net:
-    driver: bridge
+  qbittorrent-port-helper:
+        image: tyzen9/qbittorrent-port-helper:latest
+        container_name: qbittorrent-port-helper
+        restart: always
+        volumes:
+            # the "vpn-data" volume should be a shared volume with the VPN container
+            # that writes a port.dat file in the root of this container containing
+            # the dynamically assigned forwarded port number
+            - vpn-data:/vpn-data 
+        environment:
+            - TZ_ID=${TZ_ID}
+            - QBITTORRENT_USERNAME=${QBITTORRENT_USERNAME}
+            - QBITTORRENT_PASSWORD=${QBITTORRENT_PASSWORD}
+            - QBITTORRENT_PORT_NUMBER=${QBITTORRENT_PORT_NUMBER}
+            - QBITTORRENT_URL=${QBITTORRENT_URL}
+            # Optional Settings
+            # - WATCH_INTERVAL=${WATCH_INTERVAL}
+            # - STARTUP_DELAY=${STARTUP_DELAY}
+            # - LOG_LEVEL=${LOG_LEVEL}
 
 volumes:
-  qbt-config:
+  vpn-data:
