@@ -1,6 +1,6 @@
 FROM python:3.11-slim
 
-# Install prerequisites for docker-in-docker
+# Install Debian prerequisites
 RUN apt-get update && apt-get install -y --no-install-recommends \
     apt \
     dpkg \
